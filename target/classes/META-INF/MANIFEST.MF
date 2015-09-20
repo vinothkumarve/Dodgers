@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Implementation-Title: File Consumer
+Implementation-Version: 1.0.0.BUILD-SNAPSHOT
+Built-By: narendran
+Implementation-Vendor-Id: FileConsumer
+Build-Jdk: 1.8.0_60
+Created-By: Maven Integration for Eclipse
+Implementation-Vendor: Dodgers
+

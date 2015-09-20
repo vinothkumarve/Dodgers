@@ -1,0 +1,75 @@
+<beans xmlns="http://www.springframework.org/schema/beans"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xmlns:int="http://www.springframework.org/schema/integration"
+  xmlns:int-file="http://www.springframework.org/schema/integration/file"
+  xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:mvc="http://www.springframework.org/schema/mvc"
+  xsi:schemaLocation="http://www.springframework.org/schema/beans
+  
+    http://www.springframework.org/schema/beans/spring-beans.xsd
+    http://www.springframework.org/schema/integration
+    http://www.springframework.org/schema/integration/spring-integration.xsd
+    http://www.springframework.org/schema/integration/file
+    http://www.springframework.org/schema/integration/file/spring-integration-file.xsd
+    http://www.springframework.org/schema/context 
+        http://www.springframework.org/schema/context/spring-context-3.0.xsd
+        http://www.springframework.org/schema/mvc
+        http://www.springframework.org/schema/mvc/spring-mvc-3.0.xsd">
+    
+    <context:component-scan base-package="com.amazon.hackathon.dodgers.fileconsumer"/>
+    <mvc:annotation-driven/>
+    <context:property-placeholder location="classpath:*local.properties"/>
+    
+  <int:channel id="fileInputchn"/>
+  <int:channel id="csvprocess"/>
+  <int:channel id="filepath"/>
+  <int:channel id="inbounddata"/>
+  <int:channel id="processedfiles"/>
+  
+  <int:channel id="queryinput"/>
+  <int:channel id="redisquery"/>
+  <int:channel id="console"/>
+  
+  <int-file:inbound-channel-adapter directory="${input.csv.filepath}" channel="fileInputchn" filename-pattern="*.csv">
+  		<int:poller fixed-delay="5000"/>
+  </int-file:inbound-channel-adapter>
+  
+  <int-file:inbound-channel-adapter directory="${adhoc.query}" channel="queryinput" filename-pattern="*.sql">
+  		<int:poller fixed-delay="5000"/>
+  </int-file:inbound-channel-adapter>
+  
+  <int:transformer id="filepathGetter" input-channel="fileInputchn" output-channel="filepath" ref="fileHandlerService" method="processthefile"/>
+  
+  <int:service-activator input-channel="filepath" ref="inputprocessor" method="getsubscribers" output-channel="csvprocess"/>  	
+  
+  <int:service-activator input-channel="csvprocess" ref="resultproducer" method="loadcsv" output-channel="processedfiles"/>
+  
+  <!-- <int:service-activator input-channel="inbounddata" ref="resultproducer" method="loadcsv" output-channel="processedfiles"/> -->
+  
+  <int:transformer id="querygetter" input-channel="queryinput" ref="querybuilder" method="buildquery" output-channel="redisquery"/>
+  <int:service-activator input-channel="console" ref="consolewriter" method="writeResult" output-channel="processedfiles"/>
+  
+  <int:service-activator input-channel="redisquery" ref="redisservice" method="adhocquery" output-channel="console"/>
+  
+  <int:logging-channel-adapter id="logging" channel="processedfiles"/>
+  <bean name="fileHandlerService" class="com.amazon.hackathon.dodgers.fileconsumer.FileHandler"/>
+  
+  <bean name="inputprocessor" class="com.amazon.hackathon.dodgers.fileconsumer.invoker.Fileprocessor">
+  		<constructor-arg value="F:/hackathon/workspace/FileConsumer/src/main/resources/application-local.properties"/>
+  </bean>
+
+	<bean name="resultproducer" class="com.amazon.hackathon.dodgers.fileconsumer.invoker.CsvFileLoader">
+		<constructor-arg value="F:/hackathon/workspace/FileConsumer/src/main/resources/application-local.properties"/>
+	</bean>
+	
+	<bean name="querybuilder" class="com.amazon.hackathon.dodgers.fileconsumer.QueryBuilder"/>
+	<bean name="redisservice" class="com.amazon.hackathon.dodgers.fileconsumer.invoker.RedisService"/>
+	<bean name="consolewriter" class="com.amazon.hackathon.dodgers.fileconsumer.OutputWriter"/>
+
+<!-- <bean id="scanner" class="org.springframework.integration.file.DefaultDirectoryScanner">
+	<bean id="wsScanner" class=" ">
+    <constructor-arg value="/tmp/myDir" />
+</bean> -->
+
+
+</beans>
